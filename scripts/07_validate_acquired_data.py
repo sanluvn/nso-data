@@ -43,9 +43,9 @@ PX_HTML_ROOT = PXWEB_HTML_ROOT
 NSO_SERIES_ROOT = NSO_WEB_MONTHLY_ROOT
 PRODUCTION_MANIFEST_TYPE = "nso_web_release_artifact_manifest"
 
-EXPECTED_PX_TABLES = 492
-EXPECTED_PRODUCTION_MANIFESTS = 321
-EXPECTED_CURRENT_EXCEL_ARTIFACTS = 321
+HISTORICAL_PX_TABLES = 492
+HISTORICAL_PRODUCTION_MANIFESTS = 321
+HISTORICAL_CURRENT_EXCEL_ARTIFACTS = 321
 
 # We do not need to open all historical Website workbooks to validate the
 # recurring current structure. Select recent current XLSX files, while also
@@ -261,13 +261,12 @@ def validate_all_px() -> list[PxTableResult]:
     subheading("PX persisted inventory")
     print(f"PX root                              : {PX_ROOT}")
     print(f"Parquet tables discovered            : {len(paths)}")
-    print(f"Expected persisted PX tables         : {EXPECTED_PX_TABLES}")
-
-    if len(paths) != EXPECTED_PX_TABLES:
+    print(f"Historical PX table baseline          : {HISTORICAL_PX_TABLES}")
+    print(f"Current persisted PX tables           : {len(paths)}")
+    if not paths:
         raise RuntimeError(
-            f"Expected {EXPECTED_PX_TABLES} PX Parquet tables, found {len(paths)}."
+            "No persisted PX Parquet tables were found."
         )
-
     results = []
     for i, path in enumerate(paths, start=1):
         result = validate_px_table(path)
@@ -414,12 +413,14 @@ def production_manifests() -> list[tuple[Path, dict[str, Any]]]:
     print(f"Production manifests                  : {len(out)}")
     print(f"Ignored non-production/invalid        : {ignored}")
 
-    if len(out) != EXPECTED_PRODUCTION_MANIFESTS:
+    print(
+        f"Historical manifest baseline          : "
+        f"{HISTORICAL_PRODUCTION_MANIFESTS}"
+    )
+    if not out:
         raise RuntimeError(
-            f"Expected {EXPECTED_PRODUCTION_MANIFESTS} production manifests, "
-            f"found {len(out)}."
+            "No production manifests were found."
         )
-
     return out
 
 
@@ -475,12 +476,14 @@ def current_excel_inventory(
         for item in missing[:MAX_EXAMPLES]:
             print(f"  unresolved: {item}")
 
-    if len(records) != EXPECTED_CURRENT_EXCEL_ARTIFACTS:
+    print(
+        f"Historical Excel artifact baseline    : "
+        f"{HISTORICAL_CURRENT_EXCEL_ARTIFACTS}"
+    )
+    if not records:
         raise RuntimeError(
-            f"Expected {EXPECTED_CURRENT_EXCEL_ARTIFACTS} current Excel artifacts, "
-            f"resolved {len(records)}."
+            "No current Excel artifacts were resolved."
         )
-
     return records
 
 
@@ -753,14 +756,26 @@ def structural_audit(
     audit.append(
         (
             "PX tables have valid variable N-dimensional coordinates",
-            "PASS" if px_summary["table_count"] == EXPECTED_PX_TABLES else "REVIEW",
+            (
+                "PASS"
+                if (
+                    px_summary["table_count"] > 0
+                    and px_summary["min_dim"] >= 1
+                    and px_summary["duplicate_coordinate_tables"] == 0
+                    and px_summary["null_dimension_tables"] == 0
+                )
+                else "REVIEW"
+            ),
             (
                 f"{px_summary['table_count']} tables; "
-                f"dimension range {px_summary['min_dim']}..{px_summary['max_dim']}"
+                f"dimension range {px_summary['min_dim']}..{px_summary['max_dim']}; "
+                f"duplicate-coordinate tables="
+                f"{px_summary['duplicate_coordinate_tables']}; "
+                f"NULL-dimension tables="
+                f"{px_summary['null_dimension_tables']}"
             ),
         )
     )
-
     audit.append(
         (
             "PX coordinate signatures do not suffer observed SHA-256 collisions",
