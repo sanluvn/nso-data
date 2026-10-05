@@ -1,4 +1,4 @@
-"""Download the NSO PX-Web HTML-form branch as JSON-stat.
+"""Download the NSO PX-Web JSON API branch.
 
 Resume validated local state, or explicitly refresh the source.
 """
@@ -11,8 +11,7 @@ PIPELINE_ROOT = Path(__file__).resolve().parents[1]
 if str(PIPELINE_ROOT) not in sys.path:
     sys.path.insert(0, str(PIPELINE_ROOT))
 
-from src.pxweb_html import run_html_download
-
+from src.px_api import run_api_download
 
 def main():
     parser = argparse.ArgumentParser()
@@ -20,15 +19,14 @@ def main():
     parser.add_argument("--database")
     parser.add_argument("--table-id")
     args = parser.parse_args()
-    log = run_html_download(
-        timeout=90,
-        max_attempts=3,
+    log = run_api_download(
+        max_retries=3,
         mode=args.mode,
         database=args.database,
         table_id=args.table_id,
     )
 
-    print("\nHTML download summary:")
+    print("\nAPI download summary:")
     print(log["status"].value_counts(dropna=False).to_string())
 
 

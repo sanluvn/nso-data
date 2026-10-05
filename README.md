@@ -1,110 +1,107 @@
 # NSO Data Acquisition Pipeline
 
-A focused acquisition project for collecting and validating public data from Vietnam's National Statistics Office (NSO). 
-The repository intentionally stops at the raw/validated-data boundary: it contains no database schema/loaders, analytical marts, 
-or downstream metric extraction jobs.
+A reproducible pipeline for acquiring and validating public data from Vietnam's National Statistics Office (NSO).
 
-## What the project collects
+The project covers data acquisition only. Database loading, transformation and analytics are outside its scope.
 
-Two independent source branches are maintained:
+## Data sources
 
-1. **PX-Web** — discovers the PX catalog and acquires tables through either the JSON API or the HTML-form/JSON-stat route.
-2. **NSO website monthly socioeconomic releases** — discovers releases, maintains stable release identity, downloads/reconciles artifacts, and preserves immutable artifact revisions.
+The pipeline collects data from two NSO sources:
 
-The current PX corpus contains 492 catalogued tables (127 JSON API and 365 HTML/JSON-stat in the validated baseline). Baseline counts are evidence from the current corpus, not permanent assumptions about the live source.
+- **PX-Web** — discovers the table catalog and acquires data through the JSON API or HTML/JSON-stat interface.
+- **NSO website** — collects monthly socioeconomic releases and preserves their downloadable artifacts and revisions.
+
+The validated PX-Web baseline contains 492 tables: 127 API tables and 365 HTML/JSON-stat tables. These counts describe the validated corpus and are not hardcoded source assumptions.
 
 ## Setup
 
-Use Python 3.11+ from the project root:
+Python 3.11+ is recommended.
 
 ```bat
 python -m pip install -r requirements.txt
 ```
 
-## Project layout
+## Project structure
 
 ```text
 nso_pipeline/
-├── scripts/                 # Ordered entry points
-├── src/                     # Reusable acquisition/state/QC modules
-├── data/
-│   ├── raw/                 # Acquired source artifacts
-│   └── registry/            # Catalog and persistent acquisition state
-├── logs/                    # Execution history
-├── reports/                 # Regenerable QC/profiling outputs
-├── docs/                    # Acquisition architecture documentation
-├── requirements.txt
-└── README.md
+|-- scripts/        # Pipeline entry points
+|-- src/            # Reusable modules
+|-- data/
+|   |-- raw/        # Source artifacts
+|   `-- registry/   # Catalog and acquisition state
+|-- logs/           # Run history
+|-- reports/        # QC and profiling outputs
+|-- docs/           # Architecture documentation
+|-- requirements.txt
+`-- README.md
 ```
 
-## Run order
-
-The scripts are numbered by normal workflow:
+## Workflow
 
 ```text
-01_build_catalog.py          Rediscover/classify the PX-Web catalog (not routine)
-02_download_api.py           Acquire/resume/refresh PX JSON API tables
-03_download_html.py          Acquire/resume/refresh PX HTML/JSON-stat tables
-04_download_website.py       Acquire monthly NSO website releases/artifacts
-05_qc_pxweb.py               Validate persisted PX artifacts
-06_profile_pxweb.py          Generate inventory/metadata/dimension profiles
-07_validate_acquired_data.py Read-only structural validation of the full corpus
+01_catalog.py    Discover and classify PX-Web tables
+02_api.py        Acquire PX-Web API tables
+03_html.py       Acquire PX-Web HTML/JSON-stat tables
+04_web.py        Acquire NSO website releases
+05_qc.py         Run PX-Web quality checks
+06_profile.py    Profile the acquired PX-Web corpus
+07_validate.py   Validate the persisted corpus
 ```
 
-### PX-Web normal operation
+### PX-Web
 
-Run API and HTML writers sequentially because both update the same state registry.
+For normal incremental acquisition:
 
 ```bat
-python scripts\02_download_api.py --mode resume
-python scripts\03_download_html.py --mode resume
+python scripts\02_api.py --mode resume
+python scripts\03_html.py --mode resume
 ```
 
-`resume` validates local state and skips valid current artifacts. To check the remote source again:
+Run the API and HTML branches sequentially because they share the same acquisition-state registry.
+
+Use `refresh` to check the source again:
 
 ```bat
-python scripts\02_download_api.py --mode refresh
-python scripts\03_download_html.py --mode refresh
+python scripts\02_api.py --mode refresh
+python scripts\03_html.py --mode refresh
 ```
 
-A refresh acquires a candidate, validates it, compares semantic content, and publishes only validated changes. Failed refreshes must not replace the last good artifact.
-
-To diagnose one table, supply both exact catalog identifiers:
+To refresh a specific table:
 
 ```bat
-python scripts\02_download_api.py --mode refresh --database "Công nghiệp" --table-id V07.01.px
-python scripts\03_download_html.py --mode refresh --database "Chỉ số giá" --table-id V11.01.px
+python scripts\02_api.py --mode refresh --database "Công nghiệp" --table-id V07.01.px
+python scripts\03_html.py --mode refresh --database "Chỉ số giá" --table-id V11.01.px
 ```
 
-`01_build_catalog.py` is discovery, not a routine refresh command. Review catalog differences before replacing the canonical catalog because new/removed/reclassified tables can require state reconciliation.
+Run `01_catalog.py` only when intentionally rediscovering the PX-Web catalog.
 
-### NSO website releases
+### NSO website
 
 ```bat
-python scripts\04_download_website.py
+python scripts\04_web.py
 ```
 
-This branch maintains its own release registry, manifests and immutable artifact revisions. Its lifecycle differs from PX-Web current-state acquisition.
+This branch maintains a release registry and immutable artifact revisions independently from PX-Web.
 
-### Validation and profiling
+### Quality checks
 
 ```bat
-python scripts\05_qc_pxweb.py
-python scripts\06_profile_pxweb.py
-python scripts\07_validate_acquired_data.py
+python scripts\05_qc.py
+python scripts\06_profile.py
+python scripts\07_validate.py
 ```
 
-The final validator is read-only and performs no network requests. It checks persisted PX coordinate structure and representative website workbook structure/readability. Historical baseline counts may need review after genuine source changes.
+`07_validate.py` is read-only and makes no network requests.
 
-## Source-of-truth rules
+## Design principles
 
-- PX identity is `language + database + table_id`; titles and filenames are descriptive, not identities.
-- `data/registry/pxweb_acquisition_state.json` is the current PX acquisition-state authority; logs are execution history only.
-- `value_raw` preserves source notation; numeric `value` may be missing.
-- PX dimensions are table-scoped and variable in count; do not assume a fixed schema across tables.
-- Raw source artifacts are published only after validation; refresh errors must leave the last good artifact intact.
-- PX v1 keeps one current filesystem artifact per table. Website artifacts use immutable revisions.
+- PX tables are identified by `language + database + table_id`.
+- Acquisition state is authoritative; logs record execution history.
+- Source notation is preserved in `value_raw`.
+- PX dimensions are table-specific and may vary in number.
+- New data is validated before replacing the current artifact.
+- Failed refreshes preserve the last valid artifact.
+- Website artifacts retain immutable revisions.
 
-## Scope boundary
-
-This repository is deliberately **acquisition-only**. Database design/loading, SQL files, normalized analytical datasets, and metric-specific downstream extraction belong in a separate project if needed later.
+See [`docs/architecture.md`](docs/architecture.md) for the full acquisition design.

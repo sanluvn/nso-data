@@ -11,7 +11,7 @@ from urllib.parse import quote
 import pandas as pd
 import requests
 
-from .pxweb_state import PxState, facts
+from .px_state import PxState, facts
 
 from .paths import (
     PXWEB_API_LOG_PATH,

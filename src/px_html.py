@@ -12,7 +12,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from .pxweb_state import PxState, facts
+from .px_state import PxState, facts
 
 from .paths import (
     PXWEB_CATALOG_PATH,
