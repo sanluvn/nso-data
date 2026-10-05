@@ -71,14 +71,23 @@ def write_json_atomic(path, obj):
 class PxState:
     def __init__(self, path=PXWEB_ACQUISITION_STATE_PATH):
         self.path = Path(path)
-        if not self.path.is_file():
-            raise FileNotFoundError("Bootstrap pxweb_acquisition_state.json first")
-        with self.path.open(encoding="utf-8") as f:
-            self.data = json.load(f)
-        if self.data.get("schema_version") != 1 or not isinstance(self.data.get("tables"), dict):
-            raise ValueError("Unsupported PX-Web state schema")
+        if self.path.is_file():
+            with self.path.open(encoding="utf-8") as f:
+                self.data = json.load(f)
+            if (
+                self.data.get("schema_version") != 1
+                or not isinstance(self.data.get("tables"), dict)
+            ):
+                raise ValueError("Unsupported PX-Web state schema")
+        else:
+            # Fresh-clone bootstrap:
+            # initialize valid state in memory. The state file is created only
+            # when the first table is successfully published.
+            self.data = {
+                "schema_version": 1,
+                "tables": {},
+            }
         self.recover()
-
     @staticmethod
     def key(database, table_id):
         return f"vi|{database}|{table_id}"
