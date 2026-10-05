@@ -761,7 +761,7 @@ def structural_audit(
                 if (
                     px_summary["table_count"] > 0
                     and px_summary["min_dim"] >= 1
-                    and px_summary["duplicate_coordinate_tables"] == 0
+                    and px_summary["duplicate_tables"] == 0
                     and px_summary["null_dimension_tables"] == 0
                 )
                 else "REVIEW"
@@ -770,7 +770,7 @@ def structural_audit(
                 f"{px_summary['table_count']} tables; "
                 f"dimension range {px_summary['min_dim']}..{px_summary['max_dim']}; "
                 f"duplicate-coordinate tables="
-                f"{px_summary['duplicate_coordinate_tables']}; "
+                f"{px_summary['duplicate_tables']}; "
                 f"NULL-dimension tables="
                 f"{px_summary['null_dimension_tables']}"
             ),
