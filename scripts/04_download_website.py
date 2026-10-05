@@ -251,12 +251,7 @@ def ensure_pipeline_directories():
     Create directories owned by this acquisition layer.
     """
 
-    directories = (
-        RAW_ROOT,
-        SERIES_ROOT,
-        REGISTRY_ROOT,
-    )
-
+    directories = (SERIES_ROOT, RELEASE_REGISTRY_PATH.parent,)
     for directory in directories:
 
         directory.mkdir(
@@ -274,13 +269,11 @@ def validate_configuration():
     Fail early if essential configuration is invalid.
     """
 
-    if not PROJECT_ROOT.exists():
-
+    if not PIPELINE_ROOT.exists():
         raise RuntimeError(
-            "PROJECT_ROOT does not exist: "
-            f"{PROJECT_ROOT}"
+            "PIPELINE_ROOT does not exist: "
+            f"{PIPELINE_ROOT}"
         )
-
     if not LISTING_URL.startswith(
         "https://"
     ):
