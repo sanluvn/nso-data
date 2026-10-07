@@ -1,15 +1,13 @@
+# Python and local environments
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 .pytest_cache/
 .venv/
 .env
-*.log
 
-# Reproducible local outputs and machine-specific current state
-data/raw/
-data/registry/pxweb_acquisition_state.json
-data/registry/nso_web_monthly_socioeconomic_releases.json
+# Generated data, state, logs, reports and local backups
+data/
 logs/
 reports/
 
@@ -17,6 +15,4 @@ reports/
 .pxweb-*.tmp
 .pxweb_publish_journal.json
 .*.pxweb-backup
-
-# Generated PX-Web catalog (rebuilt by scripts/01_build_catalog.py)
-data/registry/pxweb_table_catalog.csv
+*.restore.part

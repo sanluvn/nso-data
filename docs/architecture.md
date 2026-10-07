@@ -25,17 +25,13 @@ The website branch discovers releases, resolves stable release identity, reconci
 
 ## Storage contract
 
-```text
-data/
-├── raw/
-│   ├── pxweb/vi/api/
-│   ├── pxweb/vi/html_jsonstat/
-│   └── nso_web/monthly_socioeconomic/
-└── registry/
-    ├── pxweb_table_catalog.csv
-    ├── pxweb_acquisition_state.json
-    └── nso_web_monthly_socioeconomic_releases.json
-```
+| Local path | Contents |
+| --- | --- |
+| `data/raw/pxweb/vi/api/` | PX API artifacts |
+| `data/raw/pxweb/vi/html_jsonstat/` | PX HTML/JSON-stat artifacts |
+| `data/raw/nso_web/monthly_socioeconomic/` | Website release folders and manifests |
+| `data/registry/` | Catalog and independent PX/Website state registries |
+
 
 `logs/` stores execution history. `reports/` stores regenerable QC, inventory, metadata and profiling evidence.
 
@@ -57,3 +53,13 @@ The validated migration baseline contains 492 PX tables (127 API, 365 HTML/JSON-
 ## Reopen this architecture when
 
 Review the contract when source API/form behavior changes, catalog membership/routing changes, state schema changes, concurrent writers are required, historical PX filesystem revisions become necessary, or the raw artifact format changes. Any migration should preserve before/after validation evidence rather than silently reinterpret existing state.
+
+## Website chronological layout
+
+Release directories use `YYYY-MM` at one level. Artifact names use `YYYY-MM_bang-so-lieu.xls`, `YYYY-MM_loi-van.doc` or the appropriate document type and extension. Only collisions receive `_02`, `_03` suffixes; UUIDs are not displayed in paths. Revisions use dedicated `revisions/<document stem>/r0002/` directories. Allocated display names are persisted under `local_layout` in each manifest, so later discovery or reordering cannot renumber existing releases or attachments. Full IDs, original source filenames, URLs and hashes remain in manifests. Unknown/conflicting coverage stays `UNDATED`; publication dates are not substituted for reference periods.
+
+The downloader resolves existing folders by manifest release ID. Both original and migrated layouts are supported. Manifest revision paths, not directory-name assumptions, are the downstream interface. The registry has no artifact paths and does not need path rewrites during migration.
+
+Maintenance migration verifies identities, paths, hashes and collisions; builds a verified staging copy; swaps directories; retains the old tree for recovery. An interrupted journal blocks normal Website acquisition until recovery. Writers and maintenance must run sequentially.
+
+Source text with legacy fonts is preserved. Font auditing classifies evidence and read failures; conversion to Unicode belongs to transformation. A hash PASS establishes byte integrity relative to acquisition metadata, not semantic correctness.

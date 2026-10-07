@@ -400,9 +400,8 @@ def production_manifests() -> list[tuple[Path, dict[str, Any]]]:
     for path in NSO_SERIES_ROOT.rglob("manifest.json"):
         try:
             manifest = load_json(path)
-        except Exception:
-            ignored += 1
-            continue
+        except Exception as exc:
+            raise RuntimeError(f"Unreadable manifest: {path}") from exc
 
         if manifest.get("manifest_type") != PRODUCTION_MANIFEST_TYPE:
             ignored += 1
@@ -411,7 +410,7 @@ def production_manifests() -> list[tuple[Path, dict[str, Any]]]:
         out.append((path, manifest))
 
     print(f"Production manifests                  : {len(out)}")
-    print(f"Ignored non-production/invalid        : {ignored}")
+    print(f"Ignored non-production               : {ignored}")
 
     print(
         f"Historical manifest baseline          : "
@@ -872,6 +871,19 @@ def main() -> None:
     heading("B — NSO WEBSITE: PRODUCTION INVENTORY + RECENT WORKBOOKS")
 
     manifests = production_manifests()
+    from src.web_layout import safe_path, sha256
+    failures = []
+    for manifest_path, manifest in manifests:
+        for artifact in manifest.get("artifacts", []):
+            for revision in artifact.get("revisions", []):
+                path = safe_path(NSO_SERIES_ROOT, revision["local_relative_path"])
+                if (not path.is_file() or path.stat().st_size != revision["byte_size"]
+                        or sha256(path) != revision["sha256"]):
+                    failures.append(str(path))
+    if failures:
+        raise RuntimeError("Website artifact integrity failures (run 08_layout.py for details):\n"
+                           + "\n".join(failures))
+    print("Website artifact SHA-256/size integrity: PASS")
     excel_records = current_excel_inventory(manifests)
 
     suffix_counts = Counter(r["path"].suffix.casefold() for r in excel_records)

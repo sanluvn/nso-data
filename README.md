@@ -23,19 +23,13 @@ python -m pip install -r requirements.txt
 
 ## Project structure
 
-```text
-nso_pipeline/
-|-- scripts/        # Pipeline entry points
-|-- src/            # Reusable modules
-|-- data/
-|   |-- raw/        # Source artifacts
-|   `-- registry/   # Catalog and acquisition state
-|-- logs/           # Run history
-|-- reports/        # QC and profiling outputs
-|-- docs/           # Architecture documentation
-|-- requirements.txt
-`-- README.md
-```
+| Location | Purpose |
+| --- | --- |
+| `scripts/` | Acquisition and maintenance entry points |
+| `src/` | Shared modules |
+| `tests/` | Offline regression tests |
+| `docs/` | Architecture and maintenance guide |
+| `data/`, `logs/`, `reports/` | Local outputs; generated as needed, excluded from Git |
 
 ## Workflow
 
@@ -47,6 +41,7 @@ nso_pipeline/
 05_qc.py         Run PX-Web quality checks
 06_profile.py    Profile the acquired PX-Web corpus
 07_validate.py   Validate the persisted corpus
+08_layout.py     Inspect, repair or migrate Website paths
 ```
 
 ### PX-Web
@@ -92,7 +87,24 @@ python scripts\06_profile.py
 python scripts\07_validate.py
 ```
 
-`07_validate.py` is read-only and makes no network requests.
+`07_validate.py` is read-only and makes no network requests. It checks Website artifact hashes and sizes, then performs bounded workbook structural checks. A structural PASS does not certify historical encoding or semantic correctness.
+
+### Website maintenance
+
+```bat
+python scripts\08_layout.py
+```
+
+The default command checks integrity and writes a path plan without changing raw files or accessing the network. Use the maintenance guide for exact-hash repair, chronological migration, recovery and optional font auditing. Existing migrated data needs no repeated migration.
+
+### Offline regression tests
+
+```bat
+python -m unittest discover -s tests
+```
+
+Tests use temporary directories and mock HTTP downloads. They do not contact NSO or modify local raw data.
+
 
 ## Design principles
 
@@ -104,4 +116,4 @@ python scripts\07_validate.py
 - Failed refreshes preserve the last valid artifact.
 - Website artifacts retain immutable revisions.
 
-See [`docs/architecture.md`](docs/architecture.md) for the full acquisition design.
+See [architecture](docs/architecture.md) and [maintenance](docs/maintenance.md).

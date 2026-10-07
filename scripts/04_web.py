@@ -22,6 +22,8 @@ import time
 import hashlib
 import uuid
 
+from src.web_layout import WebLayout, LAYOUT_VERSION, period_info, safe_path
+
 import requests
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -2684,8 +2686,18 @@ def build_transport_url(source_url):
     return source_url
 
 
+_WEB_LAYOUT = None
+
+
+def get_web_layout():
+    global _WEB_LAYOUT
+    if _WEB_LAYOUT is None:
+        _WEB_LAYOUT = WebLayout(SERIES_ROOT)
+    return _WEB_LAYOUT
+
+
 def get_release_directory(release_id):
-    return SERIES_ROOT / release_id
+    return get_web_layout().directory(release_id)
 
 
 def get_manifest_path(release_id):
@@ -2736,17 +2748,14 @@ def get_current_revision(artifact_entry):
 
 
 def get_revision_target(release_id, artifact_id, revision_number, source_filename):
-    return (
-        get_release_directory(release_id)
-        / "revisions"
-        / artifact_id
-        / f"r{revision_number:04d}"
-        / source_filename
-    )
+    return get_web_layout().target(release_id, artifact_id,
+                                   classify_artifact_url(source_filename),
+                                   revision_number, source_filename)
 
 
-def get_initial_target(release_id, source_filename):
-    return get_release_directory(release_id) / "artifacts" / source_filename
+def get_initial_target(release_id, artifact_id, candidate):
+    return get_web_layout().target(release_id, artifact_id, candidate.artifact_type,
+                                   1, candidate.source_filename)
 
 
 def remote_request_with_retry(session, source_url, temporary_path, headers=None):
@@ -2836,7 +2845,7 @@ def validate_manifest(manifest):
         if artifact["current_revision"] != numbers[-1]:
             raise RuntimeError(f"Invalid current_revision: {artifact['artifact_id']}")
         for revision in revisions:
-            path = SERIES_ROOT / revision["local_relative_path"]
+            path = safe_path(SERIES_ROOT, revision["local_relative_path"])
             if not path.exists():
                 raise RuntimeError(f"Manifest references missing file: {path}")
             if path.stat().st_size != revision["byte_size"]:
@@ -2865,7 +2874,7 @@ def acquire_new_artifact(session, release_id, candidate, observed_at, position):
     if status == 304 or not temp.exists() or temp.stat().st_size <= 0:
         raise RuntimeError(f"New artifact returned no bytes: {candidate.artifact_url}")
     sha256 = sha256_file(temp)
-    target = get_initial_target(release_id, candidate.source_filename)
+    target = get_initial_target(release_id, artifact_id, candidate)
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         raise RuntimeError(f"Initial artifact target already exists: {target}")
@@ -2940,6 +2949,7 @@ def create_empty_release_manifest(registry_entry, observed_at):
 
 
 def reconcile_release_artifacts(session, registry_entry, discovery_result):
+    get_web_layout().register(registry_entry)
     release_id = registry_entry["release_id"]
     observed_at = utc_now_iso()
     manifest = load_release_manifest(release_id)
@@ -2958,7 +2968,7 @@ def reconcile_release_artifacts(session, registry_entry, discovery_result):
         "unchanged_hash": 0,
         "missing": 0,
     }
-    for position, candidate in enumerate(discovery_result.artifacts, start=1):
+    for position, candidate in enumerate(sorted(discovery_result.artifacts, key=lambda a: a.artifact_url), start=1):
         existing = by_url.get(candidate.artifact_url)
         if existing is None:
             entry = acquire_new_artifact(
@@ -2984,6 +2994,8 @@ def reconcile_release_artifacts(session, registry_entry, discovery_result):
             entry["last_source_status"] = "missing_from_current_source"
             stats["missing"] += 1
         entry["last_source_status_at_utc"] = observed_at
+    if release_id in get_web_layout().versioned:
+        manifest["local_layout"] = get_web_layout().layouts[release_id]
     manifest["artifact_count"] = len(manifest["artifacts"])
     manifest["release_snapshot"] = registry_entry["current"]
     manifest["updated_at_utc"] = observed_at
@@ -3064,6 +3076,7 @@ def main():
 
     validate_configuration()
     ensure_pipeline_directories()
+    get_web_layout()  # Refuse an interrupted migration before network activity.
     session = build_session()
 
     print("\nDiscovering release archive...\n")
@@ -3077,6 +3090,7 @@ def main():
     validate_synchronized_registry(registry)
     write_registry_atomic(registry)
     print_registry_summary(registry, registry_existed, stats)
+    get_web_layout().register_all(registry["releases"])
 
     artifact_results = discover_all_release_artifacts(session=session, registry=registry)
     validate_artifact_discovery_results(registry=registry, results=artifact_results)
