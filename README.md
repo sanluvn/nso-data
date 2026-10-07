@@ -25,7 +25,7 @@ python -m pip install -r requirements.txt
 
 | Location | Purpose |
 | --- | --- |
-| `run.py` | One command entry point |
+| `scripts/` | Seven numbered entry points |
 | `src/` | Shared modules |
 | `docs/` | Architecture |
 | `data/`, `logs/`, `reports/` | Local outputs; generated as needed, excluded from Git |
@@ -33,13 +33,13 @@ python -m pip install -r requirements.txt
 ## Workflow
 
 ```bat
-python run.py catalog
-python run.py api
-python run.py html
-python run.py web
-python run.py qc
-python run.py profile
-python run.py validate
+python scripts\01_catalog.py
+python scripts\02_api.py
+python scripts\03_html.py
+python scripts\04_web.py
+python scripts\05_qc.py
+python scripts\06_profile.py
+python scripts\07_validate.py
 ```
 
 These are separate commands, not a requirement to rerun every stage. Existing data needs no reacquisition.
@@ -49,8 +49,8 @@ These are separate commands, not a requirement to rerun every stage. Existing da
 For normal incremental acquisition:
 
 ```bat
-python run.py api --mode resume
-python run.py html --mode resume
+python scripts\02_api.py --mode resume
+python scripts\03_html.py --mode resume
 ```
 
 Run the API and HTML branches sequentially because they share the same acquisition-state registry.
@@ -58,23 +58,23 @@ Run the API and HTML branches sequentially because they share the same acquisiti
 Use `refresh` to check the source again:
 
 ```bat
-python run.py api --mode refresh
-python run.py html --mode refresh
+python scripts\02_api.py --mode refresh
+python scripts\03_html.py --mode refresh
 ```
 
 To refresh a specific table:
 
 ```bat
-python run.py api --mode refresh --database "Công nghiệp" --table-id V07.01.px
-python run.py html --mode refresh --database "Chỉ số giá" --table-id V11.01.px
+python scripts\02_api.py --mode refresh --database "Công nghiệp" --table-id V07.01.px
+python scripts\03_html.py --mode refresh --database "Chỉ số giá" --table-id V11.01.px
 ```
 
-Run `run.py catalog` only when intentionally rediscovering the PX-Web catalog.
+Run `scripts\01_catalog.py` only when intentionally rediscovering the PX-Web catalog.
 
 ### NSO website
 
 ```bat
-python run.py web
+python scripts\04_web.py
 ```
 
 This branch maintains a release registry and immutable artifact revisions independently from PX-Web.
@@ -82,18 +82,20 @@ This branch maintains a release registry and immutable artifact revisions indepe
 ### Quality checks
 
 ```bat
-python run.py qc
-python run.py profile
-python run.py validate
+python scripts\05_qc.py
+python scripts\06_profile.py
+python scripts\07_validate.py
 ```
 
-`run.py validate` is read-only and makes no network requests. It checks Website artifact hashes and sizes, then performs bounded workbook structural checks. A structural PASS does not certify historical encoding or semantic correctness.
+`scripts\07_validate.py` is read-only and makes no network requests. It checks Website artifact hashes and sizes, then performs bounded workbook structural checks. A structural PASS does not certify historical encoding or semantic correctness.
 
 ### Compact edition
 
-This edition has 11 Python files. Profiling and quality checks remain included. Legacy path migration, exact-original repair, font auditing and the bundled test suite are omitted. Website downloads still allocate chronological short names automatically.
+This edition has 15 Python files. Profiling and quality checks remain included. Legacy path migration, exact-original repair, font auditing and the bundled test suite are omitted. Website downloads still allocate chronological short names automatically.
 
-For the full ZIP, extract into a new empty project directory. It contains code and the existing data/registry; do not rerun acquisition to install it. Do not merge it into an old checkout, which would retain obsolete scripts. A GitHub clone contains source only; copy your existing data/ directory to use your local corpus.
+For a source-only ZIP upgrade, close running scripts and extract directly into the existing project root, choosing Replace for existing files. The ZIP starts with scripts/, src/ and docs/; there is no wrapper directory and no data/ payload.
+
+When upgrading from the compact run.py edition, delete the obsolete run.py, src/web.py and src/validate.py. When upgrading from older maintenance editions, also remove scripts/08_layout.py (or scripts/08_web_layout.py), src/web_audit.py, src/jsonstat.py, tests/ and docs/maintenance.md if present. The JSON-stat decoder is now included in src/px_html.py. Keep data/ and all its contents. No acquisition or migration rerun is needed.
 
 Raw data, registry and manifest contents are unchanged by this code consolidation. Keep data/raw/ and data/registry/. Reports and logs are generated when their commands run. Historical font conversion remains outside acquisition.
 

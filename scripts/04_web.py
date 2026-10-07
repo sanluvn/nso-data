@@ -9,7 +9,11 @@ validates the resulting registry/manifests. It may access the network and update
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+
 PIPELINE_ROOT = Path(__file__).resolve().parents[1]
+if str(PIPELINE_ROOT) not in sys.path:
+    sys.path.insert(0, str(PIPELINE_ROOT))
 from typing import Optional
 from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
 import json
