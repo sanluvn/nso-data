@@ -17,11 +17,6 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import sys
-
-PIPELINE_ROOT = Path(__file__).resolve().parents[1]
-if str(PIPELINE_ROOT) not in sys.path:
-    sys.path.insert(0, str(PIPELINE_ROOT))
 from typing import Any, Iterable
 
 import pandas as pd
@@ -881,7 +876,7 @@ def main() -> None:
                         or sha256(path) != revision["sha256"]):
                     failures.append(str(path))
     if failures:
-        raise RuntimeError("Website artifact integrity failures (run 08_layout.py for details):\n"
+        raise RuntimeError("Website artifact integrity failures:\n"
                            + "\n".join(failures))
     print("Website artifact SHA-256/size integrity: PASS")
     excel_records = current_excel_inventory(manifests)

@@ -160,7 +160,7 @@ class WebLayout:
         import copy
         self.root=Path(root)
         if (self.root.parent/'.web_layout_journal.json').exists():
-            raise RuntimeError('Interrupted layout migration: run 08_layout.py --recover first.')
+            raise RuntimeError('Interrupted legacy layout migration detected. Recover with the maintenance version that started it before using this downloader.')
         production,_=inspect_manifests(root)
         self.directories={rid:p.parent for rid,(p,m) in production.items()}
         self.layouts={rid:copy.deepcopy(m['local_layout']) for rid,(p,m) in production.items()

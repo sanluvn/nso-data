@@ -25,32 +25,32 @@ python -m pip install -r requirements.txt
 
 | Location | Purpose |
 | --- | --- |
-| `scripts/` | Acquisition and maintenance entry points |
+| `run.py` | One command entry point |
 | `src/` | Shared modules |
-| `tests/` | Offline regression tests |
-| `docs/` | Architecture and maintenance guide |
+| `docs/` | Architecture |
 | `data/`, `logs/`, `reports/` | Local outputs; generated as needed, excluded from Git |
 
 ## Workflow
 
-```text
-01_catalog.py    Discover and classify PX-Web tables
-02_api.py        Acquire PX-Web API tables
-03_html.py       Acquire PX-Web HTML/JSON-stat tables
-04_web.py        Acquire NSO website releases
-05_qc.py         Run PX-Web quality checks
-06_profile.py    Profile the acquired PX-Web corpus
-07_validate.py   Validate the persisted corpus
-08_layout.py     Inspect, repair or migrate Website paths
+```bat
+python run.py catalog
+python run.py api
+python run.py html
+python run.py web
+python run.py qc
+python run.py profile
+python run.py validate
 ```
+
+These are separate commands, not a requirement to rerun every stage. Existing data needs no reacquisition.
 
 ### PX-Web
 
 For normal incremental acquisition:
 
 ```bat
-python scripts\02_api.py --mode resume
-python scripts\03_html.py --mode resume
+python run.py api --mode resume
+python run.py html --mode resume
 ```
 
 Run the API and HTML branches sequentially because they share the same acquisition-state registry.
@@ -58,23 +58,23 @@ Run the API and HTML branches sequentially because they share the same acquisiti
 Use `refresh` to check the source again:
 
 ```bat
-python scripts\02_api.py --mode refresh
-python scripts\03_html.py --mode refresh
+python run.py api --mode refresh
+python run.py html --mode refresh
 ```
 
 To refresh a specific table:
 
 ```bat
-python scripts\02_api.py --mode refresh --database "Công nghiệp" --table-id V07.01.px
-python scripts\03_html.py --mode refresh --database "Chỉ số giá" --table-id V11.01.px
+python run.py api --mode refresh --database "Công nghiệp" --table-id V07.01.px
+python run.py html --mode refresh --database "Chỉ số giá" --table-id V11.01.px
 ```
 
-Run `01_catalog.py` only when intentionally rediscovering the PX-Web catalog.
+Run `run.py catalog` only when intentionally rediscovering the PX-Web catalog.
 
 ### NSO website
 
 ```bat
-python scripts\04_web.py
+python run.py web
 ```
 
 This branch maintains a release registry and immutable artifact revisions independently from PX-Web.
@@ -82,29 +82,20 @@ This branch maintains a release registry and immutable artifact revisions indepe
 ### Quality checks
 
 ```bat
-python scripts\05_qc.py
-python scripts\06_profile.py
-python scripts\07_validate.py
+python run.py qc
+python run.py profile
+python run.py validate
 ```
 
-`07_validate.py` is read-only and makes no network requests. It checks Website artifact hashes and sizes, then performs bounded workbook structural checks. A structural PASS does not certify historical encoding or semantic correctness.
+`run.py validate` is read-only and makes no network requests. It checks Website artifact hashes and sizes, then performs bounded workbook structural checks. A structural PASS does not certify historical encoding or semantic correctness.
 
-### Website maintenance
+### Compact edition
 
-```bat
-python scripts\08_layout.py
-```
+This edition has 11 Python files. Profiling and quality checks remain included. Legacy path migration, exact-original repair, font auditing and the bundled test suite are omitted. Website downloads still allocate chronological short names automatically.
 
-The default command checks integrity and writes a path plan without changing raw files or accessing the network. Use the maintenance guide for exact-hash repair, chronological migration, recovery and optional font auditing. Existing migrated data needs no repeated migration.
+For the full ZIP, extract into a new empty project directory. It contains code and the existing data/registry; do not rerun acquisition to install it. Do not merge it into an old checkout, which would retain obsolete scripts. A GitHub clone contains source only; copy your existing data/ directory to use your local corpus.
 
-### Offline regression tests
-
-```bat
-python -m unittest discover -s tests
-```
-
-Tests use temporary directories and mock HTTP downloads. They do not contact NSO or modify local raw data.
-
+Raw data, registry and manifest contents are unchanged by this code consolidation. Keep data/raw/ and data/registry/. Reports and logs are generated when their commands run. Historical font conversion remains outside acquisition.
 
 ## Design principles
 
@@ -116,4 +107,4 @@ Tests use temporary directories and mock HTTP downloads. They do not contact NSO
 - Failed refreshes preserve the last valid artifact.
 - Website artifacts retain immutable revisions.
 
-See [architecture](docs/architecture.md) and [maintenance](docs/maintenance.md).
+See [architecture](docs/architecture.md).

@@ -60,6 +60,6 @@ Release directories use `YYYY-MM` at one level. Artifact names use `YYYY-MM_bang
 
 The downloader resolves existing folders by manifest release ID. Both original and migrated layouts are supported. Manifest revision paths, not directory-name assumptions, are the downstream interface. The registry has no artifact paths and does not need path rewrites during migration.
 
-Maintenance migration verifies identities, paths, hashes and collisions; builds a verified staging copy; swaps directories; retains the old tree for recovery. An interrupted journal blocks normal Website acquisition until recovery. Writers and maintenance must run sequentially.
+Legacy migration/repair tools are not bundled in the compact edition. An interrupted legacy migration journal still blocks acquisition to protect existing data; recovery requires the maintenance version that started that migration.
 
-Source text with legacy fonts is preserved. Font auditing classifies evidence and read failures; conversion to Unicode belongs to transformation. A hash PASS establishes byte integrity relative to acquisition metadata, not semantic correctness.
+Source text with legacy fonts is preserved. Conversion to Unicode belongs to transformation. A hash PASS establishes byte integrity relative to acquisition metadata, not semantic correctness.
